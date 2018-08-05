@@ -88,9 +88,9 @@ init session sources =
                 , isLoading = False
                 }
     in
-    FeedSources.selected sources
-        |> fetch (Session.cred session) 1
-        |> Task.map fromArticles
+        FeedSources.selected sources
+            |> fetch (Session.cred session) 1
+            |> Task.map fromArticles
 
 
 
@@ -111,9 +111,9 @@ viewArticles timeZone (Model { articles, sources, session }) =
             FeedSources.selected sources
 
         pagination =
-            viewPaginatedList articles (limit feedSource)
+            PaginatedList.view ClickedFeedPage articles (limit feedSource)
     in
-    List.append articlesHtml [ pagination ]
+        List.append articlesHtml [ pagination ]
 
 
 {-| 👉 TODO Move this logic into PaginatedList.view and make it reusable,
@@ -122,41 +122,6 @@ so we can use it on other pages too!
 💡 HINT: Make `PaginatedList.view` return `Html msg` instead of `Html Msg`. (The function will need to accept an extra argument for this to work.)
 
 -}
-viewPaginatedList : PaginatedList a -> Int -> Html Msg
-viewPaginatedList paginatedList resultsPerPage =
-    let
-        totalPages =
-            ceiling (toFloat (PaginatedList.total paginatedList) / toFloat resultsPerPage)
-
-        activePage =
-            PaginatedList.page paginatedList
-
-        viewPageLink currentPage =
-            pageLink ClickedFeedPage currentPage (currentPage == activePage)
-    in
-    if totalPages > 1 then
-        List.range 1 totalPages
-            |> List.map viewPageLink
-            |> ul [ class "pagination" ]
-
-    else
-        Html.text ""
-
-
-pageLink : (Int -> msg) -> Int -> Bool -> Html msg
-pageLink toMsg targetPage isActive =
-    li [ classList [ ( "page-item", True ), ( "active", isActive ) ] ]
-        [ a
-            [ class "page-link"
-            , onClick (toMsg targetPage)
-
-            -- The RealWorld CSS requires an href to work properly.
-            , href ""
-            ]
-            [ text (String.fromInt targetPage) ]
-        ]
-
-
 viewPreview : Maybe Cred -> Time.Zone -> Article Preview -> Html Msg
 viewPreview maybeCred timeZone article =
     let
@@ -175,7 +140,7 @@ viewPreview maybeCred timeZone article =
                 Nothing ->
                     Nothing
     in
-    Article.Preview.view config timeZone article
+        Article.Preview.view config timeZone article
 
 
 viewFeedSources : Model -> Html Msg
@@ -184,13 +149,13 @@ viewFeedSources (Model { sources, isLoading, errors }) =
         errorsHtml =
             Page.viewErrors ClickedDismissErrors errors
     in
-    ul [ class "nav nav-pills outline-active" ] <|
-        List.concat
-            [ List.map (viewFeedSource False) (FeedSources.before sources)
-            , [ viewFeedSource True (FeedSources.selected sources) ]
-            , List.map (viewFeedSource False) (FeedSources.after sources)
-            , [ errorsHtml ]
-            ]
+        ul [ class "nav nav-pills outline-active" ] <|
+            List.concat
+                [ List.map (viewFeedSource False) (FeedSources.before sources)
+                , [ viewFeedSource True (FeedSources.selected sources) ]
+                , List.map (viewFeedSource False) (FeedSources.after sources)
+                , [ errorsHtml ]
+                ]
 
 
 viewFeedSource : Bool -> Source -> Html Msg
@@ -213,8 +178,8 @@ selectTag maybeCred tag =
         source =
             TagFeed tag
     in
-    fetch maybeCred 1 source
-        |> Task.attempt (CompletedFeedLoad source)
+        fetch maybeCred 1 source
+            |> Task.attempt (CompletedFeedLoad source)
 
 
 sourceName : Source -> String
@@ -322,11 +287,11 @@ update maybeCred msg (Model model) =
                 source =
                     FeedSources.selected model.sources
             in
-            ( Model model
-            , fetch maybeCred page source
-                |> Task.andThen (\articles -> Task.map (\_ -> articles) scrollToTop)
-                |> Task.attempt (CompletedFeedLoad source)
-            )
+                ( Model model
+                , fetch maybeCred page source
+                    |> Task.andThen (\articles -> Task.map (\_ -> articles) scrollToTop)
+                    |> Task.attempt (CompletedFeedLoad source)
+                )
 
 
 scrollToTop : Task x ()
@@ -349,38 +314,37 @@ fetch maybeCred page feedSource =
         listConfig =
             { defaultListConfig | offset = offset, limit = articlesPerPage }
     in
-    Task.map (PaginatedList.mapPage (\_ -> page)) <|
-        case feedSource of
-            YourFeed cred ->
-                let
-                    feedConfig =
-                        { defaultFeedConfig | offset = offset, limit = articlesPerPage }
-                in
-                feed feedConfig cred
-                    |> Http.toTask
+        Task.map (PaginatedList.mapPage (\_ -> page)) <|
+            case feedSource of
+                YourFeed cred ->
+                    let
+                        feedConfig =
+                            { defaultFeedConfig | offset = offset, limit = articlesPerPage }
+                    in
+                        feed feedConfig cred
+                            |> Http.toTask
 
-            GlobalFeed ->
-                list listConfig maybeCred
-                    |> Http.toTask
+                GlobalFeed ->
+                    list listConfig maybeCred
+                        |> Http.toTask
 
-            TagFeed tagName ->
-                list { listConfig | tag = Just tagName } maybeCred
-                    |> Http.toTask
+                TagFeed tagName ->
+                    list { listConfig | tag = Just tagName } maybeCred
+                        |> Http.toTask
 
-            FavoritedFeed username ->
-                list { listConfig | favorited = Just username } maybeCred
-                    |> Http.toTask
+                FavoritedFeed username ->
+                    list { listConfig | favorited = Just username } maybeCred
+                        |> Http.toTask
 
-            AuthorFeed username ->
-                list { listConfig | author = Just username } maybeCred
-                    |> Http.toTask
+                AuthorFeed username ->
+                    list { listConfig | author = Just username } maybeCred
+                        |> Http.toTask
 
 
 replaceArticle : Article a -> Article a -> Article a
 replaceArticle newArticle oldArticle =
     if Article.slug newArticle == Article.slug oldArticle then
         newArticle
-
     else
         oldArticle
 
