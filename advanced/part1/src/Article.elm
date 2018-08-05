@@ -52,12 +52,11 @@ import Viewer exposing (Viewer)
 import Viewer.Cred as Cred exposing (Cred)
 
 
-
 -- TYPES
 
 
-type Article a
-    = Article Internals a
+type Article extraInfo
+    = Article Internals extraInfo
 
 
 
@@ -69,7 +68,7 @@ type Preview
 
 
 type Full
-    = Full
+    = Full Body
 
 
 type alias Metadata =
@@ -109,8 +108,8 @@ slug (Article internals _) =
 
 
 body : Article Full -> Body
-body _ =
-    "👉 TODO make this return the article's body"
+body (Article _ (Full bod)) =
+    bod
 
 
 
@@ -131,8 +130,8 @@ mapAuthor transform (Article info extras) =
 
 
 fromPreview : Body -> Article Preview -> Article Full
-fromPreview _ _ =
-    "👉 TODO convert from an Article Preview to an Article Full"
+fromPreview bod (Article internals Preview) =
+    Article internals bod
 
 
 
@@ -150,7 +149,7 @@ fullDecoder : Maybe Cred -> Decoder (Article Full)
 fullDecoder maybeCred =
     Decode.succeed Article
         |> custom (internalsDecoder maybeCred)
-        |> required "body" "👉 TODO use `Body.decoder` (which is a `Decoder Body`) to decode the body into this Article Full"
+        |> required "body" (Decode.map Full Body.decoder)
 
 
 
@@ -193,11 +192,11 @@ fetch maybeCred articleSlug =
                 |> Decode.field "article"
                 |> Http.expectJson
     in
-    url articleSlug []
-        |> HttpBuilder.get
-        |> HttpBuilder.withExpect expect
-        |> Cred.addHeaderIfAvailable maybeCred
-        |> HttpBuilder.toRequest
+        url articleSlug []
+            |> HttpBuilder.get
+            |> HttpBuilder.withExpect expect
+            |> Cred.addHeaderIfAvailable maybeCred
+            |> HttpBuilder.toRequest
 
 
 
@@ -226,10 +225,10 @@ buildFavorite builderFromUrl articleSlug cred =
                 |> Decode.field "article"
                 |> Http.expectJson
     in
-    builderFromUrl (url articleSlug [ "favorite" ])
-        |> Cred.addHeader cred
-        |> withExpect expect
-        |> HttpBuilder.toRequest
+        builderFromUrl (url articleSlug [ "favorite" ])
+            |> Cred.addHeader cred
+            |> withExpect expect
+            |> HttpBuilder.toRequest
 
 
 {-| This is a "build your own element" API.
