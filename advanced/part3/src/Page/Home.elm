@@ -20,7 +20,6 @@ import Time
 import Viewer.Cred as Cred exposing (Cred)
 
 
-
 -- MODEL
 
 
@@ -55,19 +54,19 @@ init session =
             Tag.list
                 |> Http.toTask
     in
-    ( { session = session
-      , timeZone = Time.utc
-      , tags = Loading
-      , feed = Loading
-      }
-    , Cmd.batch
-        [ Feed.init session feedSources
-            |> Task.attempt CompletedFeedLoad
-        , Tag.list
-            |> Http.send CompletedTagsLoad
-        , Task.perform GotTimeZone Time.here
-        ]
-    )
+        ( { session = session
+          , timeZone = Time.utc
+          , tags = Loading
+          , feed = Loading
+          }
+        , Cmd.batch
+            [ Feed.init session feedSources
+                |> Task.attempt CompletedFeedLoad
+            , Tag.list
+                |> Http.send CompletedTagsLoad
+            , Task.perform GotTimeZone Time.here
+            ]
+        )
 
 
 
@@ -83,7 +82,7 @@ view model =
             , div [ class "container page" ]
                 [ div [ class "row" ]
                     [ div [ class "col-md-9" ]
-                        (viewFeed model)
+                        (viewFeed model.feed model.timeZone)
                     , div [ class "col-md-3" ]
                         [ div [ class "sidebar" ] <|
                             case model.tags of
@@ -119,13 +118,13 @@ viewBanner =
 💡 HINT: It may end up with multiple arguments!
 
 -}
-viewFeed : Model -> List (Html Msg)
-viewFeed model =
-    case model.feed of
-        Loaded feed ->
+viewFeed : Status Feed.Model -> Time.Zone -> List (Html Msg)
+viewFeed feed timezone =
+    case feed of
+        Loaded feedP ->
             div [ class "feed-toggle" ]
-                [ Feed.viewFeedSources feed |> Html.map GotFeedMsg ]
-                :: (Feed.viewArticles model.timeZone feed |> List.map (Html.map GotFeedMsg))
+                [ Feed.viewFeedSources feedP |> Html.map GotFeedMsg ]
+                :: (Feed.viewArticles timezone feedP |> List.map (Html.map GotFeedMsg))
 
         Loading ->
             [ Loading.icon ]
@@ -172,7 +171,7 @@ update msg model =
                 subCmd =
                     Feed.selectTag (Session.cred model.session) tagName
             in
-            ( model, Cmd.map GotFeedMsg subCmd )
+                ( model, Cmd.map GotFeedMsg subCmd )
 
         CompletedFeedLoad (Ok feed) ->
             ( { model | feed = Loaded feed }, Cmd.none )
@@ -195,9 +194,9 @@ update msg model =
                         ( newFeed, subCmd ) =
                             Feed.update (Session.cred model.session) subMsg feed
                     in
-                    ( { model | feed = Loaded newFeed }
-                    , Cmd.map GotFeedMsg subCmd
-                    )
+                        ( { model | feed = Loaded newFeed }
+                        , Cmd.map GotFeedMsg subCmd
+                        )
 
                 Loading ->
                     ( model, Log.error )

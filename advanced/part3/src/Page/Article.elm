@@ -32,7 +32,6 @@ import Viewer exposing (Viewer)
 import Viewer.Cred as Cred exposing (Cred)
 
 
-
 -- MODEL
 
 
@@ -64,20 +63,20 @@ init session slug =
         maybeCred =
             Session.cred session
     in
-    ( { session = session
-      , timeZone = Time.utc
-      , errors = []
-      , comments = Loading
-      , article = Loading
-      }
-    , Cmd.batch
-        [ Article.fetch maybeCred slug
-            |> Http.send CompletedLoadArticle
-        , Comment.list maybeCred slug
-            |> Http.send CompletedLoadComments
-        , Task.perform GotTimeZone Time.here
-        ]
-    )
+        ( { session = session
+          , timeZone = Time.utc
+          , errors = []
+          , comments = Loading
+          , article = Loading
+          }
+        , Cmd.batch
+            [ Article.fetch maybeCred slug
+                |> Http.send CompletedLoadArticle
+            , Comment.list maybeCred slug
+                |> Http.send CompletedLoadComments
+            , Task.perform GotTimeZone Time.here
+            ]
+        )
 
 
 
@@ -88,90 +87,90 @@ view : Model -> { title : String, content : Html Msg }
 view model =
     let
         buttons =
-            viewButtons model
+            viewButtons model.session model.article
     in
-    case model.article of
-        Loaded article ->
-            let
-                { title } =
-                    Article.metadata article
+        case model.article of
+            Loaded article ->
+                let
+                    { title } =
+                        Article.metadata article
 
-                author =
-                    Article.author article
+                    author =
+                        Article.author article
 
-                avatar =
-                    Profile.avatar (Author.profile author)
+                    avatar =
+                        Profile.avatar (Author.profile author)
 
-                slug =
-                    Article.slug article
+                    slug =
+                        Article.slug article
 
-                profile =
-                    Author.profile author
-            in
-            { title = title
-            , content =
-                div [ class "article-page" ]
-                    [ div [ class "banner" ]
-                        [ div [ class "container" ]
-                            [ h1 [] [ text title ]
-                            , div [ class "article-meta" ] <|
-                                List.append
-                                    [ a [ Route.href (Route.Profile (Author.username author)) ]
-                                        [ img [ Avatar.src (Profile.avatar profile) ] [] ]
-                                    , div [ class "info" ]
-                                        [ Author.view (Author.username author)
-                                        , Timestamp.view model.timeZone (Article.metadata article).createdAt
-                                        ]
+                    profile =
+                        Author.profile author
+                in
+                    { title = title
+                    , content =
+                        div [ class "article-page" ]
+                            [ div [ class "banner" ]
+                                [ div [ class "container" ]
+                                    [ h1 [] [ text title ]
+                                    , div [ class "article-meta" ] <|
+                                        List.append
+                                            [ a [ Route.href (Route.Profile (Author.username author)) ]
+                                                [ img [ Avatar.src (Profile.avatar profile) ] [] ]
+                                            , div [ class "info" ]
+                                                [ Author.view (Author.username author)
+                                                , Timestamp.view model.timeZone (Article.metadata article).createdAt
+                                                ]
+                                            ]
+                                            buttons
+                                    , Page.viewErrors ClickedDismissErrors model.errors
                                     ]
-                                    buttons
-                            , Page.viewErrors ClickedDismissErrors model.errors
-                            ]
-                        ]
-                    , div [ class "container page" ]
-                        [ div [ class "row article-content" ]
-                            [ div [ class "col-md-12" ]
-                                [ Article.Body.toHtml (Article.body article) [] ]
-                            ]
-                        , hr [] []
-                        , div [ class "article-actions" ]
-                            [ div [ class "article-meta" ] <|
-                                List.append
-                                    [ a [ Route.href (Route.Profile (Author.username author)) ]
-                                        [ img [ Avatar.src avatar ] [] ]
-                                    , div [ class "info" ]
-                                        [ Author.view (Author.username author)
-                                        , Timestamp.view model.timeZone (Article.metadata article).createdAt
-                                        ]
+                                ]
+                            , div [ class "container page" ]
+                                [ div [ class "row article-content" ]
+                                    [ div [ class "col-md-12" ]
+                                        [ Article.Body.toHtml (Article.body article) [] ]
                                     ]
-                                    buttons
+                                , hr [] []
+                                , div [ class "article-actions" ]
+                                    [ div [ class "article-meta" ] <|
+                                        List.append
+                                            [ a [ Route.href (Route.Profile (Author.username author)) ]
+                                                [ img [ Avatar.src avatar ] [] ]
+                                            , div [ class "info" ]
+                                                [ Author.view (Author.username author)
+                                                , Timestamp.view model.timeZone (Article.metadata article).createdAt
+                                                ]
+                                            ]
+                                            buttons
+                                    ]
+                                , div [ class "row" ]
+                                    [ div [ class "col-xs-12 col-md-8 offset-md-2" ] <|
+                                        -- Don't render the comments until the article has loaded!
+                                        case model.comments of
+                                            Loading ->
+                                                [ Loading.icon ]
+
+                                            Loaded ( commentText, comments ) ->
+                                                -- Don't let users add comments until they can
+                                                -- see the existing comments! Otherwise you
+                                                -- may be about to repeat something that's
+                                                -- already been said.
+                                                viewAddComment slug commentText (Session.viewer model.session)
+                                                    :: List.map (viewComment model.timeZone slug) comments
+
+                                            Failed ->
+                                                [ Loading.error "comments" ]
+                                    ]
+                                ]
                             ]
-                        , div [ class "row" ]
-                            [ div [ class "col-xs-12 col-md-8 offset-md-2" ] <|
-                                -- Don't render the comments until the article has loaded!
-                                case model.comments of
-                                    Loading ->
-                                        [ Loading.icon ]
+                    }
 
-                                    Loaded ( commentText, comments ) ->
-                                        -- Don't let users add comments until they can
-                                        -- see the existing comments! Otherwise you
-                                        -- may be about to repeat something that's
-                                        -- already been said.
-                                        viewAddComment slug commentText (Session.viewer model.session)
-                                            :: List.map (viewComment model.timeZone slug) comments
+            Loading ->
+                { title = "Article", content = Loading.icon }
 
-                                    Failed ->
-                                        [ Loading.error "comments" ]
-                            ]
-                        ]
-                    ]
-            }
-
-        Loading ->
-            { title = "Article", content = Loading.icon }
-
-        Failed ->
-            { title = "Article", content = Loading.error "article" }
+            Failed ->
+                { title = "Article", content = Loading.error "article" }
 
 
 viewAddComment : Slug -> CommentText -> Maybe Viewer -> Html Msg
@@ -193,23 +192,23 @@ viewAddComment slug commentText maybeViewer =
                         Sending str ->
                             ( str, [ disabled True ] )
             in
-            Html.form [ class "card comment-form", onSubmit (ClickedPostComment cred slug) ]
-                [ div [ class "card-block" ]
-                    [ textarea
-                        [ class "form-control"
-                        , placeholder "Write a comment..."
-                        , attribute "rows" "3"
-                        , onInput EnteredCommentText
+                Html.form [ class "card comment-form", onSubmit (ClickedPostComment cred slug) ]
+                    [ div [ class "card-block" ]
+                        [ textarea
+                            [ class "form-control"
+                            , placeholder "Write a comment..."
+                            , attribute "rows" "3"
+                            , onInput EnteredCommentText
+                            ]
+                            []
                         ]
-                        []
+                    , div [ class "card-footer" ]
+                        [ img [ class "comment-author-img", Avatar.src avatar ] []
+                        , button
+                            (class "btn btn-sm btn-primary" :: buttonAttrs)
+                            [ text "Post Comment" ]
+                        ]
                     ]
-                , div [ class "card-footer" ]
-                    [ img [ class "comment-author-img", Avatar.src avatar ] []
-                    , button
-                        (class "btn btn-sm btn-primary" :: buttonAttrs)
-                        [ text "Post Comment" ]
-                    ]
-                ]
 
         Nothing ->
             p []
@@ -225,34 +224,34 @@ viewAddComment slug commentText maybeViewer =
 💡 HINT: It may end up with multiple arguments!
 
 -}
-viewButtons : Model -> List (Html Msg)
-viewButtons model =
-    case Session.cred model.session of
+viewButtons : Session -> Status (Article Full) -> List (Html Msg)
+viewButtons mSession mArticle =
+    case Session.cred mSession of
         Just cred ->
-            case model.article of
+            case mArticle of
                 Loaded article ->
                     let
                         author =
                             Article.author article
                     in
-                    case author of
-                        IsFollowing followedAuthor ->
-                            [ Author.unfollowButton (ClickedUnfollow cred) followedAuthor
-                            , text " "
-                            , favoriteButton cred article
-                            ]
+                        case author of
+                            IsFollowing followedAuthor ->
+                                [ Author.unfollowButton (ClickedUnfollow cred) followedAuthor
+                                , text " "
+                                , favoriteButton cred article
+                                ]
 
-                        IsNotFollowing unfollowedAuthor ->
-                            [ Author.followButton (ClickedFollow cred) unfollowedAuthor
-                            , text " "
-                            , favoriteButton cred article
-                            ]
+                            IsNotFollowing unfollowedAuthor ->
+                                [ Author.followButton (ClickedFollow cred) unfollowedAuthor
+                                , text " "
+                                , favoriteButton cred article
+                                ]
 
-                        IsViewer _ _ ->
-                            [ editButton article
-                            , text " "
-                            , deleteButton cred article
-                            ]
+                            IsViewer _ _ ->
+                                [ editButton article
+                                , text " "
+                                , deleteButton cred article
+                                ]
 
                 Loading ->
                     []
@@ -283,11 +282,11 @@ viewComment timeZone slug comment =
                         msg =
                             ClickedDeleteComment cred slug (Comment.id comment)
                     in
-                    span
-                        [ class "mod-options"
-                        , onClick msg
-                        ]
-                        [ i [ class "ion-trash-a" ] [] ]
+                        span
+                            [ class "mod-options"
+                            , onClick msg
+                            ]
+                            [ i [ class "ion-trash-a" ] [] ]
 
                 _ ->
                     -- You can't delete other peoples' comments!
@@ -296,21 +295,21 @@ viewComment timeZone slug comment =
         timestamp =
             Timestamp.format timeZone (Comment.createdAt comment)
     in
-    div [ class "card" ]
-        [ div [ class "card-block" ]
-            [ p [ class "card-text" ] [ text (Comment.body comment) ] ]
-        , div [ class "card-footer" ]
-            [ a [ class "comment-author", href "" ]
-                [ img [ class "comment-author-img", Avatar.src (Profile.avatar profile) ] []
+        div [ class "card" ]
+            [ div [ class "card-block" ]
+                [ p [ class "card-text" ] [ text (Comment.body comment) ] ]
+            , div [ class "card-footer" ]
+                [ a [ class "comment-author", href "" ]
+                    [ img [ class "comment-author-img", Avatar.src (Profile.avatar profile) ] []
+                    , text " "
+                    ]
                 , text " "
+                , a [ class "comment-author", Route.href (Route.Profile authorUsername) ]
+                    [ text (Username.toString authorUsername) ]
+                , span [ class "date-posted" ] [ text timestamp ]
+                , deleteCommentButton
                 ]
-            , text " "
-            , a [ class "comment-author", Route.href (Route.Profile authorUsername) ]
-                [ text (Username.toString authorUsername) ]
-            , span [ class "date-posted" ] [ text timestamp ]
-            , deleteCommentButton
             ]
-        ]
 
 
 
@@ -551,11 +550,10 @@ favoriteButton cred article =
         kids =
             [ text (" Favorite Article (" ++ String.fromInt favoritesCount ++ ")") ]
     in
-    if favorited then
-        Article.unfavoriteButton cred (ClickedUnfavorite cred slug body) [] kids
-
-    else
-        Article.favoriteButton cred (ClickedFavorite cred slug body) [] kids
+        if favorited then
+            Article.unfavoriteButton cred (ClickedUnfavorite cred slug body) [] kids
+        else
+            Article.favoriteButton cred (ClickedFavorite cred slug body) [] kids
 
 
 deleteButton : Cred -> Article a -> Html Msg
@@ -564,8 +562,8 @@ deleteButton cred article =
         msg =
             ClickedDeleteArticle cred (Article.slug article)
     in
-    button [ class "btn btn-outline-danger btn-sm", onClick msg ]
-        [ i [ class "ion-trash-a" ] [], text " Delete Article" ]
+        button [ class "btn btn-outline-danger btn-sm", onClick msg ]
+            [ i [ class "ion-trash-a" ] [], text " Delete Article" ]
 
 
 editButton : Article a -> Html Msg

@@ -21,7 +21,6 @@ import Viewer exposing (Viewer)
 import Viewer.Cred as Cred exposing (Cred)
 
 
-
 -- MODEL
 
 
@@ -55,12 +54,12 @@ init session =
                         cred =
                             Viewer.cred viewer
                     in
-                    { avatar = Avatar.toMaybeString (Profile.avatar profile)
-                    , email = Email.toString (Viewer.email viewer)
-                    , bio = Maybe.withDefault "" (Profile.bio profile)
-                    , username = Username.toString cred.username
-                    , password = Nothing
-                    }
+                        { avatar = Avatar.toMaybeString (Profile.avatar profile)
+                        , email = Email.toString (Viewer.email viewer)
+                        , bio = Maybe.withDefault "" (Profile.bio profile)
+                        , username = Username.toString cred.username
+                        , password = Nothing
+                        }
 
                 Nothing ->
                     -- It's fine to store a blank form here. You won't be
@@ -96,29 +95,29 @@ view : Model -> { title : String, content : Html Msg }
 view model =
     let
         form =
-            viewForm model
+            viewForm model.session model.form
     in
-    { title = "Settings"
-    , content =
-        case Session.cred model.session of
-            Just cred ->
-                div [ class "settings-page" ]
-                    [ div [ class "container page" ]
-                        [ div [ class "row" ]
-                            [ div [ class "col-md-6 offset-md-3 col-xs-12" ]
-                                [ h1 [ class "text-xs-center" ] [ text "Your Settings" ]
-                                , model.errors
-                                    |> List.map (\( _, error ) -> li [] [ text error ])
-                                    |> ul [ class "error-messages" ]
-                                , form
+        { title = "Settings"
+        , content =
+            case Session.cred model.session of
+                Just cred ->
+                    div [ class "settings-page" ]
+                        [ div [ class "container page" ]
+                            [ div [ class "row" ]
+                                [ div [ class "col-md-6 offset-md-3 col-xs-12" ]
+                                    [ h1 [ class "text-xs-center" ] [ text "Your Settings" ]
+                                    , model.errors
+                                        |> List.map (\( _, error ) -> li [] [ text error ])
+                                        |> ul [ class "error-messages" ]
+                                    , form
+                                    ]
                                 ]
                             ]
                         ]
-                    ]
 
-            Nothing ->
-                text "Sign in to view your settings."
-    }
+                Nothing ->
+                    text "Sign in to view your settings."
+        }
 
 
 {-| 👉 TODO refactor this to accept narrower types than the entire Model.
@@ -126,71 +125,71 @@ view model =
 💡 HINT: It may end up with multiple arguments!
 
 -}
-viewForm : Model -> Html Msg
-viewForm model =
+viewForm : Session -> Form -> Html Msg
+viewForm mSession mForm =
     let
         form =
-            model.form
+            mForm
     in
-    case Session.cred model.session of
-        Nothing ->
-            text ""
+        case Session.cred mSession of
+            Nothing ->
+                text ""
 
-        Just cred ->
-            Html.form [ onSubmit (SubmittedForm cred) ]
-                [ fieldset []
-                    [ fieldset [ class "form-group" ]
-                        [ input
-                            [ class "form-control"
-                            , placeholder "URL of profile picture"
-                            , value (Maybe.withDefault "" form.avatar)
-                            , onInput EnteredImage
+            Just cred ->
+                Html.form [ onSubmit (SubmittedForm cred) ]
+                    [ fieldset []
+                        [ fieldset [ class "form-group" ]
+                            [ input
+                                [ class "form-control"
+                                , placeholder "URL of profile picture"
+                                , value (Maybe.withDefault "" form.avatar)
+                                , onInput EnteredImage
+                                ]
+                                []
                             ]
-                            []
-                        ]
-                    , fieldset [ class "form-group" ]
-                        [ input
-                            [ class "form-control form-control-lg"
-                            , placeholder "Username"
-                            , value form.username
-                            , onInput EnteredUsername
+                        , fieldset [ class "form-group" ]
+                            [ input
+                                [ class "form-control form-control-lg"
+                                , placeholder "Username"
+                                , value form.username
+                                , onInput EnteredUsername
+                                ]
+                                []
                             ]
-                            []
-                        ]
-                    , fieldset [ class "form-group" ]
-                        [ textarea
-                            [ class "form-control form-control-lg"
-                            , placeholder "Short bio about you"
-                            , attribute "rows" "8"
-                            , value form.bio
-                            , onInput EnteredBio
+                        , fieldset [ class "form-group" ]
+                            [ textarea
+                                [ class "form-control form-control-lg"
+                                , placeholder "Short bio about you"
+                                , attribute "rows" "8"
+                                , value form.bio
+                                , onInput EnteredBio
+                                ]
+                                []
                             ]
-                            []
-                        ]
-                    , fieldset [ class "form-group" ]
-                        [ input
-                            [ class "form-control form-control-lg"
-                            , placeholder "Email"
-                            , value form.email
-                            , onInput EnteredEmail
+                        , fieldset [ class "form-group" ]
+                            [ input
+                                [ class "form-control form-control-lg"
+                                , placeholder "Email"
+                                , value form.email
+                                , onInput EnteredEmail
+                                ]
+                                []
                             ]
-                            []
-                        ]
-                    , fieldset [ class "form-group" ]
-                        [ input
-                            [ class "form-control form-control-lg"
-                            , type_ "password"
-                            , placeholder "Password"
-                            , value (Maybe.withDefault "" form.password)
-                            , onInput EnteredPassword
+                        , fieldset [ class "form-group" ]
+                            [ input
+                                [ class "form-control form-control-lg"
+                                , type_ "password"
+                                , placeholder "Password"
+                                , value (Maybe.withDefault "" form.password)
+                                , onInput EnteredPassword
+                                ]
+                                []
                             ]
-                            []
+                        , button
+                            [ class "btn btn-lg btn-primary pull-xs-right" ]
+                            [ text "Update Settings" ]
                         ]
-                    , button
-                        [ class "btn btn-lg btn-primary pull-xs-right" ]
-                        [ text "Update Settings" ]
                     ]
-                ]
 
 
 
@@ -235,11 +234,10 @@ update msg model =
                 password =
                     if String.isEmpty passwordStr then
                         Nothing
-
                     else
                         Just passwordStr
             in
-            updateForm (\form -> { form | password = password }) model
+                updateForm (\form -> { form | password = password }) model
 
         EnteredBio bio ->
             updateForm (\form -> { form | bio = bio }) model
@@ -249,11 +247,10 @@ update msg model =
                 avatar =
                     if String.isEmpty avatarStr then
                         Nothing
-
                     else
                         Just avatarStr
             in
-            updateForm (\form -> { form | avatar = avatar }) model
+                updateForm (\form -> { form | avatar = avatar }) model
 
         CompletedSave (Err error) ->
             let
@@ -262,9 +259,9 @@ update msg model =
                         |> Api.listErrors errorsDecoder
                         |> List.map (\errorMessage -> ( Server, errorMessage ))
             in
-            ( { model | errors = List.append model.errors serverErrors }
-            , Cmd.none
-            )
+                ( { model | errors = List.append model.errors serverErrors }
+                , Cmd.none
+                )
 
         CompletedSave (Ok cred) ->
             ( model
@@ -366,9 +363,9 @@ edit cred validForm =
             Decode.field "user" Viewer.decoder
                 |> Http.expectJson
     in
-    Api.url [ "user" ]
-        |> HttpBuilder.put
-        |> HttpBuilder.withExpect expect
-        |> HttpBuilder.withBody body
-        |> Cred.addHeader cred
-        |> HttpBuilder.toRequest
+        Api.url [ "user" ]
+            |> HttpBuilder.put
+            |> HttpBuilder.withExpect expect
+            |> HttpBuilder.withBody body
+            |> Cred.addHeader cred
+            |> HttpBuilder.toRequest
