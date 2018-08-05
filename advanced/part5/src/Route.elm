@@ -10,7 +10,6 @@ import Url.Parser as Parser exposing ((</>), Parser, oneOf, s, string)
 import Username exposing (Username)
 
 
-
 -- ROUTING
 
 
@@ -34,6 +33,11 @@ parser =
         , Parser.map Login (s "login")
         , Parser.map Logout (s "logout")
         , Parser.map Profile (s "profile" </> Username.urlParser)
+        , Parser.map Settings (s "settings")
+        , Parser.map Register (s "register")
+        , Parser.map Article (s "article" </> Slug.urlParser)
+        , Parser.map EditArticle (s "editor" </> Slug.urlParser)
+        , Parser.map NewArticle (s "editor")
 
         -- 👉 TODO /settings       →  Settings
         -- 👉 TODO /register       →  Register
@@ -107,4 +111,4 @@ routeToString page =
                 EditArticle slug ->
                     [ "editor", Slug.toString slug ]
     in
-    "#/" ++ String.join "/" pieces
+        "#/" ++ String.join "/" pieces
