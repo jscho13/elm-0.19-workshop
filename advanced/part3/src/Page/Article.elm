@@ -87,7 +87,12 @@ view : Model -> { title : String, content : Html Msg }
 view model =
     let
         buttons =
-            viewButtons model.session model.article
+            case Session.cred model.session of
+                Just cred ->
+                    viewButtons cred model.article
+
+                Nothing ->
+                    []
     in
         case model.article of
             Loaded article ->
@@ -224,42 +229,37 @@ viewAddComment slug commentText maybeViewer =
 💡 HINT: It may end up with multiple arguments!
 
 -}
-viewButtons : Session -> Status (Article Full) -> List (Html Msg)
-viewButtons mSession mArticle =
-    case Session.cred mSession of
-        Just cred ->
-            case mArticle of
-                Loaded article ->
-                    let
-                        author =
-                            Article.author article
-                    in
-                        case author of
-                            IsFollowing followedAuthor ->
-                                [ Author.unfollowButton (ClickedUnfollow cred) followedAuthor
-                                , text " "
-                                , favoriteButton cred article
-                                ]
+viewButtons : Cred -> Status (Article Full) -> List (Html Msg)
+viewButtons cred mArticle =
+    case mArticle of
+        Loaded article ->
+            let
+                author =
+                    Article.author article
+            in
+                case author of
+                    IsFollowing followedAuthor ->
+                        [ Author.unfollowButton (ClickedUnfollow cred) followedAuthor
+                        , text " "
+                        , favoriteButton cred article
+                        ]
 
-                            IsNotFollowing unfollowedAuthor ->
-                                [ Author.followButton (ClickedFollow cred) unfollowedAuthor
-                                , text " "
-                                , favoriteButton cred article
-                                ]
+                    IsNotFollowing unfollowedAuthor ->
+                        [ Author.followButton (ClickedFollow cred) unfollowedAuthor
+                        , text " "
+                        , favoriteButton cred article
+                        ]
 
-                            IsViewer _ _ ->
-                                [ editButton article
-                                , text " "
-                                , deleteButton cred article
-                                ]
+                    IsViewer _ _ ->
+                        [ editButton article
+                        , text " "
+                        , deleteButton cred article
+                        ]
 
-                Loading ->
-                    []
+        Loading ->
+            []
 
-                Failed ->
-                    []
-
-        Nothing ->
+        Failed ->
             []
 
 
